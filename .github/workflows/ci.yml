@@ -1,0 +1,20 @@
+name: CI
+
+on:
+  pull_request:
+    # Edit to match your environment branches (see pr-scope-check.yml).
+    branches: [dev, test, prod]
+
+jobs:
+  build:
+    name: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      # Drop --legacy-peer-deps if your project doesn't need it.
+      - run: npm ci --legacy-peer-deps
+      - run: npm run build --if-present
+      - run: npm test --if-present

@@ -1,0 +1,63 @@
+name: PR Scope Check
+
+on:
+  pull_request:
+    # ── Environment branches ──────────────────────────────────────────────
+    # These are the branches a PR can TARGET for the check to run. Edit this
+    # list to match your repo's model. Examples:
+    #   single-branch repo:      branches: [main]
+    #   env-branch model (this): branches: [dev, test, prod]
+    branches: [dev, test, prod]
+    types: [opened, synchronize, reopened, edited]
+
+# Cancel an in-flight run when the PR is updated again
+concurrency:
+  group: scope-check-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: write # to post the sticky comment
+
+jobs:
+  scope-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Run scope check
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+
+          # ---- AI provider ----
+          AI_PROVIDER: openrouter        # "openrouter" | "github-models" | "gemini"
+          AI_MODEL: qwen/qwen3-coder     # OpenRouter model id (no "openrouter/" prefix)
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          # GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}   # only if AI_PROVIDER=gemini
+
+          # ---- issue tracker ----
+          ISSUE_PROVIDER: clickup        # "clickup" | "jira"
+
+          # ClickUp (default task ids like 86d3bzhgq — no team id needed)
+          CLICKUP_TOKEN: ${{ secrets.CLICKUP_TOKEN }}
+
+          # Jira (uncomment + set ISSUE_PROVIDER=jira to use instead)
+          # JIRA_BASE_URL: ${{ vars.JIRA_BASE_URL }}       # e.g. https://your-org.atlassian.net
+          # JIRA_EMAIL: ${{ vars.JIRA_EMAIL }}             # Atlassian account email
+          # JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
+
+          # ISSUE_ID_REGEX: ''   # optional override, only if auto-detection misses
+
+          # ---- behaviour ----
+          REQUIRE_TASK: 'true'          # block if no ticket is linked
+          FAIL_OPEN_ON_ERROR: 'false'   # block if the check errors (set true to let PRs through)
+          MAX_DIFF_CHARS: '60000'
+        run: node .github/scripts/scope-check.mjs
