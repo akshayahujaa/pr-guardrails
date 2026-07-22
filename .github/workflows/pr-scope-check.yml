@@ -60,4 +60,5 @@ jobs:
           REQUIRE_TASK: 'true'          # block if no ticket is linked
           FAIL_OPEN_ON_ERROR: 'false'   # block if the check errors (set true to let PRs through)
           MAX_DIFF_CHARS: '60000'
+          AUTO_CLOSE_OUT_OF_SCOPE: 'true'  # close the PR automatically on an out_of_scope verdict
         run: node .github/scripts/scope-check.mjs

@@ -46,6 +46,7 @@ const {
   REQUIRE_TASK = 'true',                  // block if no ticket is found
   FAIL_OPEN_ON_ERROR = 'false',           // if the AI/API errors, block (false) or pass (true)
   MAX_DIFF_CHARS = '60000',               // cap the diff sent to the model
+  AUTO_CLOSE_OUT_OF_SCOPE = 'true',       // close the PR automatically on an out_of_scope verdict
 } = process.env;
 
 const [OWNER, NAME] = (REPO || '').split('/');
@@ -53,6 +54,7 @@ const COMMENT_MARKER = '<!-- pr-scope-check -->';
 const requireTask = REQUIRE_TASK === 'true';
 const failOpen = FAIL_OPEN_ON_ERROR === 'true';
 const maxDiff = parseInt(MAX_DIFF_CHARS, 10) || 60000;
+const autoClose = AUTO_CLOSE_OUT_OF_SCOPE === 'true';
 const provider = (ISSUE_PROVIDER || 'clickup').toLowerCase();
 
 // ---------------------------------------------------------------- GitHub API
@@ -74,6 +76,7 @@ async function gh(path, { method = 'GET', body } = {}) {
 }
 
 const getPR = () => gh(`/repos/${OWNER}/${NAME}/pulls/${PR_NUMBER}`);
+const closePR = () => gh(`/repos/${OWNER}/${NAME}/pulls/${PR_NUMBER}`, { method: 'PATCH', body: { state: 'closed' } });
 
 async function getChangedFiles() {
   const files = [];
@@ -424,21 +427,31 @@ async function main() {
       `${v.summary || 'Changes appear to be within scope.'} _(confidence ${pct}%)_` + footer;
   } else {
     const flagged = (v.out_of_scope_files || []).map((f) => `- \`${f}\``).join('\n');
+    const closingNote = autoClose
+      ? `This PR has been **closed automatically**. Remove the unrelated changes, or update the ticket ` +
+        `description to cover this work, then open a new PR.`
+      : `Remove the unrelated changes, or update the ticket description to cover this work, ` +
+        `then push again — this check re-runs automatically.`;
     md =
       `### 🚫 Scope check failed — merge blocked\n\n` +
       `**Ticket:** ${taskLink}\n` +
       `**Verdict:** Out of scope _(confidence ${pct}%)_\n\n` +
       `${v.reasoning || v.summary || ''}\n\n` +
       (flagged ? `**Files flagged as out of scope:**\n${flagged}\n\n` : '') +
-      `Remove the unrelated changes, or update the ticket description to cover this work, ` +
-      `then push again — this check re-runs automatically.` + footer;
+      closingNote + footer;
   }
 
   await upsertComment(md);
   summary(md.replace(footer, ''));
 
   if (inScope) { console.log('::notice::Scope check passed.'); process.exit(0); }
-  console.log('::error::Scope check failed — changes out of scope.');
+
+  if (autoClose) {
+    await closePR();
+    console.log('::error::Scope check failed — changes out of scope. PR closed automatically.');
+  } else {
+    console.log('::error::Scope check failed — changes out of scope.');
+  }
   process.exit(1);
 }
 

@@ -118,6 +118,10 @@ On a PR to a configured branch it:
    a strict JSON contract.
 4. Posts a single sticky comment: ✅ in scope, or 🚫 with the out-of-scope files
    and the reason. Exit code gates the check.
+5. On an `out_of_scope` verdict, **closes the PR automatically** (configurable via
+   `AUTO_CLOSE_OUT_OF_SCOPE`) — the author fixes the ticket/scope and opens a new
+   PR. A missing ticket or a check error only blocks the merge; they don't close
+   the PR, since those are often fixable without abandoning the branch.
 
 **Key env vars** (set in the workflow, not secrets):
 
@@ -129,6 +133,7 @@ On a PR to a configured branch it:
 | `REQUIRE_TASK` | `true` | block if no ticket is linked |
 | `FAIL_OPEN_ON_ERROR` | `false` | on API/AI error: block (`false`) or pass (`true`) |
 | `MAX_DIFF_CHARS` | `60000` | cap the diff sent to the model |
+| `AUTO_CLOSE_OUT_OF_SCOPE` | `true` | close the PR automatically on an `out_of_scope` verdict |
 
 > **Note:** the AI's `confidence` value is shown in the comment for humans — it
 > does **not** affect pass/fail. Only the `verdict` (`in_scope`/`out_of_scope`),
@@ -173,6 +178,7 @@ flags make build/test no-ops if those scripts don't exist.
 | Use Gemini for the scope check | `AI_PROVIDER: gemini` + `GEMINI_API_KEY` secret |
 | Let PRs through when the check errors | `FAIL_OPEN_ON_ERROR: 'true'` |
 | Not require a ticket | `REQUIRE_TASK: 'false'` |
+| Keep out-of-scope PRs open instead of auto-closing | `AUTO_CLOSE_OUT_OF_SCOPE: 'false'` |
 
 ---
 
