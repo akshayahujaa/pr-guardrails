@@ -154,6 +154,21 @@ function extractIssueId(pr) {
   return provider === 'jira' ? extractJiraId(pr) : extractClickUpId(pr);
 }
 
+// -------------------------------------------------- Acceptance criteria check
+// Looks for a heading like "Acceptance Criteria" / "AC:" in the task
+// description, followed by non-empty content. Deterministic — no AI call.
+const AC_HEADING_RE = /(^|\n)\s*#{0,6}\s*(acceptance criteria|acceptance criterias|AC)\s*:?\s*(\n|$)/i;
+
+function hasAcceptanceCriteria(description) {
+  const match = description.match(AC_HEADING_RE);
+  if (!match) return false;
+  const after = description.slice(match.index + match[0].length);
+  // must have some non-whitespace content after the heading before the next heading (or EOF)
+  const nextHeadingIdx = after.search(/(^|\n)\s*#{1,6}\s+\S/);
+  const body = nextHeadingIdx === -1 ? after : after.slice(0, nextHeadingIdx);
+  return body.trim().length > 0;
+}
+
 // ============================================================ ISSUE FETCHING
 async function getClickUpTask(taskId) {
   if (!CLICKUP_TOKEN) throw new Error('CLICKUP_TOKEN is not set.');
@@ -403,6 +418,20 @@ async function main() {
 
   const task = await getIssue(ref.taskId);
   console.log(`Linked ticket: ${task.name} (${task.id}) via ${ref.source}`);
+
+   // No acceptance criteria in the task ------------------------------------
+  if (!hasAcceptanceCriteria(task.description)) {
+    const md =
+      `### 🚫 Scope check failed — Acceptance criteria required\n\n` +
+      `**Task:** [${task.name}](${task.url}) (\`${task.id}\`)\n\n` +
+      `This task's ClickUp description has no **Acceptance Criteria** section, ` +
+      `so scope can't be verified against it.\n\n` +
+      `Add an "Acceptance Criteria" section to the ClickUp task description, ` +
+      `then push again — this check re-runs automatically.` + footer;
+    await upsertComment(md);
+    console.log('::error::Acceptance criteria required — none found in linked ClickUp task.');
+    process.exit(1);
+  }
 
   const files = await getChangedFiles();
   if (files.length === 0) {
