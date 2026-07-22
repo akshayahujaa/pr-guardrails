@@ -91,6 +91,12 @@ branch name:
 Then open the PR normally — the check finds the ticket automatically. You can
 also paste the ticket link in the PR description or put `[<id>]` in the title.
 
+> **Write a real description on the ticket.** The scope check sends the
+> ticket's title + description (not the PR diff alone) to the AI to decide
+> what's "in scope." A ClickUp task or Jira issue with just a title and no
+> description gives the AI nothing to compare the PR against, so it can't
+> reliably judge scope — add a few sentences on what should change and why.
+
 ### 5. (Recommended) Make the checks required
 
 Settings → **Branches → Branch protection rules** → require the status checks
