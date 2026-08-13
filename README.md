@@ -157,6 +157,27 @@ On a PR to a configured branch it:
 Drop `--legacy-peer-deps` if your project doesn't need it; the `--if-present`
 flags make build/test no-ops if those scripts don't exist.
 
+### ClickUp task sync (`clickup-sync.yml`)
+
+Closes the loop between a merge and the ticket that motivated it. The branch
+name **is** the link:
+
+```
+feature/CU-<task-id>/<description>     e.g. feature/CU-86d4150hr/document-clickup-sync
+```
+
+When a pull request from such a branch is **merged into `dev`**, the workflow
+reads the task id out of the head branch, looks the task up with
+`CLICKUP_TOKEN`, and — only if the task is still in a to-do status (`to do`,
+`todo`, `open`, `backlog`, `pending`) — moves it to **in progress**. A task
+already in progress, in review, or done is left untouched, so a later merge
+can never drag a ticket backwards. A closed-but-unmerged PR changes nothing.
+
+The same `CU-<task-id>` convention is what the scope check uses to find the
+ticket, so one branch name drives both gates. A `workflow_dispatch` trigger
+accepts a branch name as input for testing the wiring without merging
+anything.
+
 ---
 
 ## Costs
