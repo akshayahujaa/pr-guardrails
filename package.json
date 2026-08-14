@@ -5,7 +5,7 @@
   "description": "Drop-in GitHub Actions that make every pull request traceable and reviewed.",
   "scripts": {
     "build": "echo 'build: workflow suite only — nothing to compile'",
-    "test": "node --test \"tests/*.test.mjs\""
+    "test": "node --test tests/*.test.mjs"
   },
   "license": "MIT"
 }
