@@ -5,7 +5,7 @@ name: ClickUp task sync
 on:
   pull_request:
     types: [closed]
-    branches: [dev]
+    branches: [dev, test, prod]
   # Manual entry, for verifying the wiring (secret, id extraction, environment
   # mapping, ClickUp auth) without a PR. It is ALWAYS read-only: only a real
   # merged pull request may move a task, so a dispatch reports what would happen
@@ -53,6 +53,8 @@ jobs:
           base="${BASE_REF#refs/heads/}"
           case "$base" in
             'dev') want='in progress' ;;
+            'test') want='QA' ;;
+            'prod') want='complete' ;;
             *)
               echo "::warning::No ClickUp status is mapped for '$base'; nothing to sync."
               exit 0
@@ -99,7 +101,7 @@ jobs:
           # Forward-only: a late merge into an earlier environment must never
           # drag a task backwards along the pipeline.
           rank() {
-            printf '%s\n' 'to do' 'todo' 'open' 'backlog' 'pending' 'in progress' 'QA' 'Staging' 'UAT' 'Pre-prod' 'Done' \
+            printf '%s\n' 'to do' 'todo' 'open' 'backlog' 'pending' 'in progress' 'QA' 'Staging' 'UAT' 'Pre-prod' 'Done' 'complete' \
               | awk -v s="$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]')" \
                 'tolower($0) == s { print NR; exit }'
           }
