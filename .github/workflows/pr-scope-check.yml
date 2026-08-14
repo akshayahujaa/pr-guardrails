@@ -39,7 +39,10 @@ jobs:
 
           # ---- AI provider ----
           AI_PROVIDER: openrouter        # "openrouter" | "github-models" | "gemini"
-          AI_MODEL: nvidia/nemotron-3-ultra-550b-a55b:free     # OpenRouter model id (no "openrouter/" prefix)
+          # OpenRouter model id (no "openrouter/" prefix). Keep this on a model
+          # the key can actually run: a free-tier id that answers with an empty
+          # completion reaches FAIL_OPEN_ON_ERROR=false and blocks every PR.
+          AI_MODEL: qwen/qwen3-coder
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           # GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}   # only if AI_PROVIDER=gemini
 
