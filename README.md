@@ -181,6 +181,13 @@ Two guarantees worth knowing:
 - **Forward-only.** A merge may only move a card further along the pipeline. A
   late merge into `dev` will not drag a card that already reached QA back to
   "in progress".
+- **The workflow runs from the branch a PR targets.** The sync writes the
+  generated file to the **default branch**, but GitHub executes a
+  `pull_request` workflow from the pull request's merge ref — so the copy that
+  decides a merge into `prod` is the one on `prod`. An environment branch keeps
+  whatever `main` held when it was cut, so this file has to be promoted along
+  the environment chain like any other change. Skip that and a merge runs a
+  stale mapping: shipped code, card left behind.
 - **The status column must already exist in ClickUp.** ClickUp's API cannot
   create a status — every documented endpoint treats them as read-only, and
   `PUT /list` accepts a `statuses` array with HTTP 200 while silently ignoring
