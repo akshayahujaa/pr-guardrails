@@ -11,7 +11,7 @@ on:
         description: "What to do"
         required: true
         type: choice
-        options: [probe, create-task, space-probe, try-add-status]
+        options: [probe, create-task, space-probe, try-add-status, try-add-list-status]
       task_id:
         description: "probe: an existing task id used to locate the list"
         required: false
@@ -125,6 +125,35 @@ jobs:
 
               echo "== statuses after =="
               api "https://api.clickup.com/api/v2/space/${SPACE_ID}" \
+                | jq -c '[.statuses[].status]'
+              ;;
+            try-add-list-status)
+              # Same experiment scoped to one List, which is where this demo's
+              # statuses actually live (override_statuses: true). Additive only,
+              # and it cannot affect any other List.
+              current="$(api "https://api.clickup.com/api/v2/list/${LIST_ID}")"
+              echo "== statuses before =="
+              printf '%s' "$current" | jq -c '[.statuses[].status]'
+
+              payload="$(printf '%s' "$current" | jq -c --arg s "$STATUS_NAME" '
+                {statuses: ([.statuses[] | {status, type, orderindex, color}]
+                  + [{status: $s, type: "custom",
+                      orderindex: ([.statuses[].orderindex] | max + 1),
+                      color: "#4194f6"}])}')"
+              echo "== PUT /list payload =="
+              printf '%s\n' "$payload" | jq .
+
+              echo "== API response =="
+              code="$(curl -sS -o /tmp/resp.json -w '%{http_code}' -X PUT \
+                -H "Authorization: $CLICKUP_TOKEN" \
+                -H "Content-Type: application/json" \
+                -d "$payload" \
+                "https://api.clickup.com/api/v2/list/${LIST_ID}")"
+              echo "HTTP $code"
+              jq . /tmp/resp.json || cat /tmp/resp.json
+
+              echo "== statuses after =="
+              api "https://api.clickup.com/api/v2/list/${LIST_ID}" \
                 | jq -c '[.statuses[].status]'
               ;;
             *)
