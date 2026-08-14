@@ -5,15 +5,25 @@ name: ClickUp task sync
 on:
   pull_request:
     types: [closed]
-    branches: [dev]
-  # Manual test entry: simulates a merged branch without needing a real PR,
-  # so the wiring (secret, id extraction, ClickUp auth) can be verified alone.
+    branches: [dev, test, prod]
+  # Manual test entry: simulates a merged branch without needing a real PR, so
+  # the wiring (secret, id extraction, environment mapping, ClickUp auth) can be
+  # verified on its own. dry_run resolves and reports without writing anything.
   workflow_dispatch:
     inputs:
       head_ref:
-        description: "Branch name to simulate, e.g. feature/CU-123/thing"
+        description: "Branch to simulate, e.g. feature/WOH-123/thing"
         required: true
         type: string
+      base_ref:
+        description: "Environment branch merged into, e.g. dev"
+        required: true
+        type: string
+      dry_run:
+        description: "Resolve and report only; write nothing to ClickUp"
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -30,6 +40,8 @@ jobs:
           # Only needed when the workspace uses ClickUp Custom Task IDs.
           CLICKUP_TEAM_ID: ${{ secrets.CLICKUP_TEAM_ID }}
           HEAD_REF: ${{ github.event.pull_request.head.ref || inputs.head_ref }}
+          BASE_REF: ${{ github.event.pull_request.base.ref || inputs.base_ref }}
+          DRY_RUN: ${{ inputs.dry_run }}
         run: |
           set -euo pipefail
 
@@ -38,13 +50,26 @@ jobs:
             exit 0
           fi
 
-          # Branches are <prefix>/CU-<id>[/description], enforced by the
+          # The branch merged INTO selects the status. This case block is the
+          # entire environment mapping.
+          base="${BASE_REF#refs/heads/}"
+          case "$base" in
+            'dev') want='in progress' ;;
+            'test') want='QA' ;;
+            'prod') want='Done' ;;
+            *)
+              echo "::warning::No ClickUp status is mapped for '$base'; nothing to sync."
+              exit 0
+              ;;
+          esac
+
+          # Branches are <prefix>/WOH-<id>[/description], enforced by the
           # branch-nomenclature ruleset.
-          id="$(printf '%s' "$HEAD_REF" | awk -F/ -v p='CU-' \
+          id="$(printf '%s' "$HEAD_REF" | awk -F/ -v p='WOH-' \
             'index($2, p) == 1 { print substr($2, length(p) + 1) }')"
 
           if [ -z "$id" ]; then
-            echo "::warning::No CU- task id in '$HEAD_REF'; nothing to sync."
+            echo "::warning::No WOH- task id in '$HEAD_REF'; nothing to sync."
             exit 0
           fi
 
@@ -54,24 +79,60 @@ jobs:
           fi
           url="https://api.clickup.com/api/v2/task/${id}${query}"
 
-          status="$(curl -sS -f -H "Authorization: $CLICKUP_TOKEN" "$url" \
-            | jq -r '.status.status // empty')"
-          echo "Task $id is currently '${status:-unknown}'."
+          task="$(curl -sS -f -H "Authorization: $CLICKUP_TOKEN" "$url")"
+          status="$(printf '%s' "$task" | jq -r '.status.status // empty')"
+          list_id="$(printf '%s' "$task" | jq -r '.list.id // empty')"
+          echo "Task $id is '${status:-unknown}'; '$base' targets '$want'."
 
-          lower="$(printf '%s' "$status" | tr '[:upper:]' '[:lower:]')"
-          case "$lower" in
-            'to do'|'todo'|'open'|'backlog'|'pending')
-              ;;
-            *)
-              echo "Not a to-do status; leaving task $id untouched."
-              exit 0
-              ;;
-          esac
+          # ClickUp has no endpoint that creates a status, so the column has to
+          # exist already. Resolve case-insensitively and report precisely.
+          available="$(curl -sS -f -H "Authorization: $CLICKUP_TOKEN" \
+            "https://api.clickup.com/api/v2/list/${list_id}" | jq -r '.statuses[].status')"
+
+          resolved="$(printf '%s\n' "$available" \
+            | awk -v w="$(printf '%s' "$want" | tr '[:upper:]' '[:lower:]')" \
+              'tolower($0) == w { print; exit }')"
+
+          if [ -z "$resolved" ]; then
+            echo "::error::ClickUp list $list_id has no '$want' status. The API cannot create one — add it in ClickUp (List → Statuses), then re-run."
+            echo "Available statuses:"
+            printf '%s\n' "$available" | sed 's/^/  - /'
+            exit 1
+          fi
+
+          # Forward-only: a late merge into an earlier environment must never
+          # drag a task backwards along the pipeline.
+          rank() {
+            printf '%s\n' 'to do' 'todo' 'open' 'backlog' 'pending' 'in progress' 'QA' 'Staging' 'UAT' 'Pre-prod' 'Done' \
+              | awk -v s="$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]')" \
+                'tolower($0) == s { print NR; exit }'
+          }
+
+          from="$(rank "$status")"
+          to="$(rank "$resolved")"
+
+          if [ -z "$to" ]; then
+            echo "::warning::'$resolved' is not in the configured pipeline; leaving task $id alone."
+            exit 0
+          fi
+          if [ -z "$from" ]; then
+            echo "Task $id is '$status', which is not in the pipeline; leaving it alone."
+            exit 0
+          fi
+          if [ "$to" -le "$from" ]; then
+            echo "Task $id is already at or past '$resolved'; leaving it alone."
+            exit 0
+          fi
+
+          if [ "${DRY_RUN:-false}" = "true" ]; then
+            echo "[dry-run] would move task $id from '$status' to '$resolved'."
+            exit 0
+          fi
 
           curl -sS -f -X PUT \
             -H "Authorization: $CLICKUP_TOKEN" \
             -H "Content-Type: application/json" \
-            -d '{"status":"in progress"}' \
+            -d "$(jq -nc --arg s "$resolved" '{status: $s}')" \
             "$url" > /dev/null
 
-          echo "Task $id moved to 'in progress'."
+          echo "Task $id moved to '$resolved'."
