@@ -204,3 +204,20 @@ flags make build/test no-ops if those scripts don't exist.
 MIT — see [LICENSE](LICENSE).
 
 // dev test check
+
+## ClickUp task sync — per environment
+
+The sync workflow moves the linked ClickUp task when a pull request is
+**merged** into an environment branch (a closed-unmerged PR, or a manual
+dispatch, never moves a card):
+
+| Merged into | Card moves to |
+| ----------- | ------------- |
+| `dev`       | `in progress` |
+| `test`      | `QA`          |
+| `prod`      | `complete`    |
+
+Movement is forward-only: a late merge into `dev` never drags a card back
+out of QA. The target column must already exist on the ClickUp list — the
+ClickUp API cannot create columns, so a missing one fails the run and the
+log names exactly which column to add.
