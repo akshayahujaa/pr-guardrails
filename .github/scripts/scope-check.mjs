@@ -24,7 +24,7 @@ const {
 
   // ---- AI provider ----
   AI_PROVIDER = 'openrouter',      // "openrouter" | "github-models" | "gemini"
-  AI_MODEL = 'qwen/qwen3-coder',   // OpenRouter model id (no "openrouter/" prefix)
+  AI_MODEL = 'nvidia/nemotron-3-ultra-550b-a55b:free',   // OpenRouter model id (no "openrouter/" prefix)
   OPENROUTER_API_KEY,
   GEMINI_API_KEY,
 
