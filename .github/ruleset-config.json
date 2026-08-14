@@ -1,0 +1,72 @@
+{
+  "baseline": {
+    "rulesetName": "Pull Request Compulsion",
+    "includeDefaultBranch": true,
+    "requirePullRequest": true,
+    "requiredApprovals": 0,
+    "preventDeletion": true,
+    "preventForcePush": true,
+    "allowedMergeMethods": [
+      "merge",
+      "squash",
+      "rebase"
+    ]
+  },
+  "environments": {
+    "dev": {
+      "statusChecks": [
+        "scope-check",
+        "build"
+      ],
+      "statusCheckRuleset": "PR-SCOPE-CHECK"
+    },
+    "test": {
+      "statusChecks": [
+        "scope-check",
+        "build"
+      ],
+      "statusCheckRuleset": "TEST-GATES"
+    },
+    "prod": {
+      "statusChecks": [
+        "scope-check",
+        "build",
+        "security gate"
+      ],
+      "statusCheckRuleset": "PROD-GATES"
+    },
+    "staging": {},
+    "perf": {}
+  },
+  "taskSync": {
+    "enabled": true,
+    "provider": "clickup",
+    "taskIdPrefix": "WOH-",
+    "environments": {
+      "dev": "in progress",
+      "test": "QA",
+      "prod": "complete"
+    },
+    "todoStatuses": [
+      "to do",
+      "todo",
+      "open",
+      "backlog",
+      "pending"
+    ]
+  },
+  "branchNaming": {
+    "rulesetName": "Enforce Branch Nomenclature",
+    "allowedPrefixes": [
+      "feature",
+      "bugfix",
+      "hotfix",
+      "docs",
+      "chore"
+    ],
+    "requireTaskId": true,
+    "taskIdPrefix": "WOH-",
+    "restrictCreation": true,
+    "preventForcePush": true
+  }
+}
