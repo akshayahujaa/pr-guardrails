@@ -171,6 +171,19 @@ every environment; the target branch is the switch:
 | `test`      | QA             |
 | `prod`      | Done           |
 
+Those are the plugin's **defaults**, not a requirement — they are what an
+environment maps to when the config says nothing about it. Your workspace's
+columns win: a List whose closed column is called `complete` rather than `Done`
+maps `prod` to it in one line, and the sync regenerates against that name.
+
+```json
+"taskSync": { "environments": { "prod": "complete" } }
+```
+
+Matching is case-insensitive, so a config saying `QA` resolves against a column
+spelled `qa`. A name that has no column at all is the one case that fails — see
+below.
+
 Adding an environment to `.github/ruleset-config.json` extends this
 automatically — the next sync regenerates the workflow with a new trigger branch
 and a new case, so nothing here is hand-edited. Names the plugin doesn't know
