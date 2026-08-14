@@ -6,24 +6,21 @@ on:
   pull_request:
     types: [closed]
     branches: [dev, test, prod]
-  # Manual test entry: simulates a merged branch without needing a real PR, so
-  # the wiring (secret, id extraction, environment mapping, ClickUp auth) can be
-  # verified on its own. dry_run resolves and reports without writing anything.
+  # Manual entry, for verifying the wiring (secret, id extraction, environment
+  # mapping, ClickUp auth) without a PR. It is ALWAYS read-only: only a real
+  # merged pull request may move a task, so a dispatch reports what would happen
+  # and stops. Without that, anyone able to run a workflow could advance a card
+  # that no one had merged.
   workflow_dispatch:
     inputs:
       head_ref:
-        description: "Branch to simulate, e.g. feature/WOH-123/thing"
+        description: "Branch to check, e.g. feature/WOH-123/thing"
         required: true
         type: string
       base_ref:
-        description: "Environment branch merged into, e.g. dev"
+        description: "Environment branch to check against, e.g. dev"
         required: true
         type: string
-      dry_run:
-        description: "Resolve and report only; write nothing to ClickUp"
-        required: false
-        default: false
-        type: boolean
 
 permissions:
   contents: read
@@ -41,7 +38,8 @@ jobs:
           CLICKUP_TEAM_ID: ${{ secrets.CLICKUP_TEAM_ID }}
           HEAD_REF: ${{ github.event.pull_request.head.ref || inputs.head_ref }}
           BASE_REF: ${{ github.event.pull_request.base.ref || inputs.base_ref }}
-          DRY_RUN: ${{ inputs.dry_run }}
+          # A dispatch is always a rehearsal; only a merged PR writes.
+          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' }}
         run: |
           set -euo pipefail
 
