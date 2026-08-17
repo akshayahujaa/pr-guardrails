@@ -201,4 +201,5 @@ flags make build/test no-ops if those scripts don't exist.
 
 ## License
 
+// anther test comment.
 MIT — see [LICENSE](LICENSE).
