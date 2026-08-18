@@ -47,15 +47,15 @@ jobs:
           # GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}   # only if AI_PROVIDER=gemini
 
           # ---- issue tracker ----
-          ISSUE_PROVIDER: clickup        # "clickup" | "jira"
+          ISSUE_PROVIDER: jira        # "clickup" | "jira"
 
           # ClickUp (default task ids like 86d3bzhgq — no team id needed)
-          CLICKUP_TOKEN: ${{ secrets.CLICKUP_TOKEN }}
+          # CLICKUP_TOKEN: ${{ secrets.CLICKUP_TOKEN }}
 
           # Jira (uncomment + set ISSUE_PROVIDER=jira to use instead)
-          # JIRA_BASE_URL: ${{ vars.JIRA_BASE_URL }}       # e.g. https://your-org.atlassian.net
-          # JIRA_EMAIL: ${{ vars.JIRA_EMAIL }}             # Atlassian account email
-          # JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
+          JIRA_BASE_URL: ${{ vars.JIRA_BASE_URL }}       # e.g. https://your-org.atlassian.net
+          JIRA_EMAIL: ${{ vars.JIRA_EMAIL }}             # Atlassian account email
+          JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
 
           # ISSUE_ID_REGEX: ''   # optional override, only if auto-detection misses
 
